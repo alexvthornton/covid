@@ -4,57 +4,72 @@ import { Line } from "vue-chartjs";
 export default {
     extends: Line,
     props: {
-        labelOne: {
-            type: String
-        },
-        labelTwo: {
-            type: String
-        },
-        chartDataOne: {
+        labels: {
             type: Array
         },
-        chartDataTwo: {
+        chartData: {
+            type: Array
+        },
+        chartColors: {
             type: Array
         },
         options: {
             type: Object
-        },
-        chartColorsOne: {
-            type: Object
-        },
-        chartColorsTwo: {
-            type: Object
         }
     },
     mounted() {
-        const dates = this.chartDataOne.map(d => d.date).reverse();
 
-        const totalsOne = this.chartDataOne.map(d => d.total).reverse();
-        const totalsTwo = this.chartDataTwo.map(d => d.total).reverse();
+        let totals = null;
 
-        const { borderColorOne, pointDorderColorOne, pointBackgroundColorOne, backgroundColorOne } = this.chartColorsOne
-        const { borderColorTwo, pointDorderColorTwo, pointBackgroundColorTwo, backgroundColorTwo } = this.chartColorsTwo
+        let datasets = [];
+        for (let i = 0; i < this.chartData.length; i++) {
+
+            totals = this.chartData[i].map(d => d.total).reverse();
+            let { borderColor, pointDorderColor, pointBackgroundColor, backgroundColor } = this.chartColors[i];
+
+            datasets.push({
+                fill: true,
+                label: this.labels[i],
+                data: totals,
+                borderColor: borderColor, // color of line
+                pointDorderColor: pointDorderColor, // color of circle
+                pointBackgroundColor: pointBackgroundColor, // background color of point
+                backgroundColor: backgroundColor // color of graph
+            })
+        }
+
+        const dates = this.chartData[0].map(d => d.date).reverse();
+
         this.renderChart({
                 labels: dates,
-                datasets: [{
-                    label: this.labelOne,
-                    data: totalsOne,
-                    borderColor: borderColorOne, // color of line
-                    pointDorderColor: pointDorderColorOne, // color of circle
-                    pointBackgroundColor: pointBackgroundColorOne, // background color of point
-                    backgroundColor: backgroundColorOne // color of graph
-                }, {
-                    label: this.labelTwo,
-                    data: totalsTwo,
-                    borderColor: borderColorTwo, // color of line
-                    pointDorderColor: pointDorderColorTwo, // color of circle
-                    pointBackgroundColor: pointBackgroundColorTwo, // background color of point
-                    backgroundColor: backgroundColorTwo // color of graph
-
-                }]
+                datasets: datasets
             },
             this.options
         );
     }
 }
+/* 
+ let totals = null;
+       
+
+        const dates = this.chartData[0].map(d => d.date).reverse();
+        for(let i = 0; i < this.chartData.length; i++){
+            console.log(i);
+            let { borderColor, pointDorderColor, pointBackgroundColor, backgroundColor } = this.chartColors[i];
+            totals = this.chartData[i].map(d => d.total).reverse();
+            this.renderChart({
+                labels: dates,
+                datasets: [{
+                    label: this.labels[i],
+                    data: totals,
+                    borderColor: borderColor, // color of line
+                    pointDorderColor: pointDorderColor, // color of circle
+                    pointBackgroundColor: pointBackgroundColor, // background color of point
+                    backgroundColor: backgroundColor // color of graph
+                }]
+            }, 
+            this.options
+            );
+        } */
 </script>
+
