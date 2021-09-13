@@ -13,39 +13,43 @@
             <div class="row mt-5" v-if="arrDeaths.length > 0">
                 <div class="col">
                     <h2>Overlays</h2>
+                    <section id="chart-slider">
+                        <section class="row text-center">
+                            <ul id="checkboxes">
+                                <li><input type="checkbox" id="positive" value="positive" name="graphs" v-model="checkedGraph">
+                                    <label for="positive">Positive</label></li>
     
-                    <section class="col text-center">
-                        <ul id="checkboxes">
-                            <li><input type="checkbox" id="positive" value="positive" name="graphs" v-model="checkedGraph">
-                                <label for="positive">Positive</label></li>
+                                <li><input type="checkbox" id="hospitalized" value="hospitalized" name="graphs" v-model="checkedGraph">
+                                    <label for="hospitalized">Hospitalized</label></li>
     
-                            <li><input type="checkbox" id="hospitalized" value="hospitalized" name="graphs" v-model="checkedGraph">
-                                <label for="hospitalized">Hospitalized</label></li>
+                                <li><input type="checkbox" id="icu" value="icu" name="graphs" v-model="checkedGraph">
+                                    <label for="icu">In ICU</label></li>
     
-                            <li><input type="checkbox" id="icu" value="icu" name="graphs" v-model="checkedGraph">
-                                <label for="icu">In ICU</label></li>
+                                <li><input type="checkbox" id="ventilators" value="ventilators" name="graphs" v-model="checkedGraph">
+                                    <label for="ventilators">On Ventilators</label></li>
     
-                            <li><input type="checkbox" id="ventilators" value="ventilators" name="graphs" v-model="checkedGraph">
-                                <label for="ventilators">On Ventilators</label></li>
+                                <!-- <li><input type="checkbox" id="recovered" value="recovered" name="graphs" v-model="checkedGraph">
+                                    <label for="recovered">Recovered</label></li> -->
     
-                            <li><input type="checkbox" id="recovered" value="recovered" name="graphs" v-model="checkedGraph">
-                                <label for="recovered">Recovered</label></li>
+                                <li><input type="checkbox" id="death" value="death" name="graphs" v-model="checkedGraph">
+                                    <label for="death">Death</label></li>
     
-                            <li><input type="checkbox" id="death" value="death" name="graphs" v-model="checkedGraph">
-                                <label for="death">Death</label></li>
+                            </ul>
     
-                        </ul>
     
-                        <br>
-                        <div id="main-chart">
-                            <multi-data-line-chart id="myChart" :key="checkedGraph" :chartData="graphData()" :options="chartOptions" :labels="graphLabel()" :chartColors="graphColors()"></multi-data-line-chart>
-                        </div>
+    
+    
+                            <div id="main-chart">
+                                <multi-data-line-chart id="myChart" :key="[dateRange, checkedGraph]" :chartData="graphData()" :options="chartOptions" :labels="graphLabel()" :chartColors="graphColors()"></multi-data-line-chart>
+                            </div>
+                        </section>
+    
+                        <vue-slider id="slider" v-model="dateRange" :data="dates" :lazy="true" :tooltip="'always'" :min-range="10"></vue-slider>
                     </section>
-    
-                    <br>
                 </div>
-                <!-- need fisrtChart() and secondChart() to be called every time checkedGraph changes maybe with watcher idk-->
+    
             </div>
+    
         </body>
     </div>
 </template>
@@ -56,19 +60,33 @@ import moment from 'moment'; // for date formating
 
 import multiDataLineChart from "./components/multiDataLineChart"
 
+import VueSlider from 'vue-slider-component'
+import 'vue-slider-component/theme/default.css'
+
+
 export default {
     name: 'App',
     components: {
-        multiDataLineChart
+        multiDataLineChart,
+        VueSlider
     },
     data() {
         return {
+            entireArrPositive: [],
             arrPositive: [],
+            entireArrhospitalized: [],
             arrhospitalized: [],
+            entireArrInIcu: [],
             arrInIcu: [],
+            entireArrOnVentilators: [],
             arrOnVentilators: [],
+            entireArrRecovered: [],
             arrRecovered: [],
+            entireArrDeaths: [],
             arrDeaths: [],
+
+            dates: [],
+            dateRange: [],
 
             chartOptions: {
                 responsive: true,
@@ -120,26 +138,37 @@ export default {
         }
     },
     async created() {
-        const { data } = await axios.get("https://covidtracking.com/api/us/daily");
-        data.forEach(d => {
-            const date = moment(d.date, "YYYYMMDD").format("MM/DD");
 
+        
+        const { data } = await axios.get("https://api.covidtracking.com/v1/us/daily.json");
+        console.log(data)
+
+        this.dateRange.push(moment(data[data.length - 1].date, "YYYYMMDD").format("MM/DD/YY"));
+        this.dateRange.push(moment(data[0]["date"], "YYYYMMDD").format("MM/DD/YY"));
+
+        console.log(this.dateRange)
+
+        data.forEach(d => {
+            const date = moment(d.date, "YYYYMMDD").format("MM/DD/YY");
+            this.dates.unshift(date);
             const {
                 positive,
                 hospitalizedCurrently,
                 inIcuCurrently,
                 onVentilatorCurrently,
-                recovered,
+                //recovered,
                 death
             } = d;
 
-            this.arrPositive.push({ date, total: positive });
-            this.arrhospitalized.push({ date, total: hospitalizedCurrently });
-            this.arrInIcu.push({ date, total: inIcuCurrently });
-            this.arrOnVentilators.push({ date, total: onVentilatorCurrently });
-            this.arrRecovered.push({ date, total: recovered });
-            this.arrDeaths.push({ date, total: death });
+            this.entireArrPositive.push({ date, total: positive });
+            this.entireArrhospitalized.push({ date, total: hospitalizedCurrently });
+            this.entireArrInIcu.push({ date, total: inIcuCurrently });
+            this.entireArrOnVentilators.push({ date, total: onVentilatorCurrently });
+            //this.entireArrRecovered.push({ date, total: recovered });
+            this.entireArrDeaths.push({ date, total: death });
         })
+
+        this.createDatedArrays();
     },
     methods: {
         graphData() {
@@ -148,7 +177,12 @@ export default {
             for (let i = 0; i < this.checkedGraph.length; i++) {
                 let str = this.checkedGraph[i];
 
-                if (str == 'positive') { graphDataArr.push(this.arrPositive) } else if (str == 'hospitalized') { graphDataArr.push(this.arrhospitalized) } else if (str == 'icu') { graphDataArr.push(this.arrInIcu) } else if (str == 'ventilators') { graphDataArr.push(this.arrOnVentilators) } else if (str == 'recovered') { graphDataArr.push(this.arrRecovered) } else if (str == 'death') { graphDataArr.push(this.arrDeaths) }
+                if (str == 'positive') { graphDataArr.push(this.arrPositive) }
+                else if (str == 'hospitalized') { graphDataArr.push(this.arrhospitalized) }
+                else if (str == 'icu') { graphDataArr.push(this.arrInIcu) } 
+                else if (str == 'ventilators') { graphDataArr.push(this.arrOnVentilators) }
+                //else if (str == 'recovered') { graphDataArr.push(this.arrRecovered) } 
+                else if (str == 'death') { graphDataArr.push(this.arrDeaths) }
             }
 
             return graphDataArr;
@@ -158,13 +192,41 @@ export default {
             for (let i = 0; i < this.checkedGraph.length; i++) {
                 let str = this.checkedGraph[i];
 
-                if (str == 'positive') { graphLabelArr.push("Positive") } else if (str == 'hospitalized') { graphLabelArr.push("Hospitalized") } else if (str == 'icu') { graphLabelArr.push("In ICU") } else if (str == 'ventilators') { graphLabelArr.push("On Ventilators") } else if (str == 'recovered') { graphLabelArr.push("Recovered") } else if (str == 'death') { graphLabelArr.push("Deaths") }
+                if (str == 'positive') { graphLabelArr.push("Positive") } else if (str == 'hospitalized') { graphLabelArr.push("Hospitalized") } else if (str == 'icu') { graphLabelArr.push("In ICU") } else if (str == 'ventilators') { graphLabelArr.push("On Ventilators") } else if (str == 'death') { graphLabelArr.push("Deaths") } /*else if (str == 'recovered') { graphLabelArr.push("Recovered") } */
             }
 
             return graphLabelArr;
         },
         graphColors() {
             return this.allGraphColors
+        },
+        createDatedArrays() {
+
+            const startDate = this.findWithAttr(this.entireArrPositive, "date", this.dateRange[1])
+            const endDate = this.findWithAttr(this.entireArrPositive, "date", this.dateRange[0])
+            
+
+            this.arrPositive = this.entireArrPositive.slice(startDate, endDate)
+            this.arrhospitalized = this.entireArrhospitalized.slice(startDate, endDate)
+            this.arrInIcu = this.entireArrInIcu.slice(startDate, endDate)
+            this.arrOnVentilators = this.entireArrOnVentilators.slice(startDate, endDate)
+           // this.arrRecovered = this.entireArrRecovered.slice(startDate, endDate)
+            this.arrDeaths = this.entireArrDeaths.slice(startDate, endDate)
+
+        },
+
+        findWithAttr(array, attr, value) {
+            for (var i = 0; i < array.length; i += 1) {
+                if (array[i][attr] === value) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+    },
+    watch: {
+        dateRange() {
+            this.createDatedArrays();
         }
     }
 }
@@ -189,7 +251,9 @@ label {
 }
 
 #body {
-    margin-top: 100px;
+    margin-top: 50px;
+    display: grid;
+    justify-content: center;
 }
 
 #nav-links {
@@ -203,20 +267,22 @@ ul {
 
 #checkboxes {
     display: grid;
-    justify-content: center;
-    grid-template-columns: auto auto auto auto auto auto;
-    grid-template-rows: auto auto auto;
+    justify-items: left;
+    grid-template-rows: auto auto auto auto auto auto auto;
 }
 
 #main-chart {
-    max-height: 70vh;
-    max-width: 70vw;
     display: grid;
     justify-content: center;
-    grid-template-columns: auto;
 }
 
-#overlays {
-    
+#chart-slider {
+    display: flex;
+    flex-direction: column;
+}
+
+#slider {
+    margin-top: 30px;
+    max-width: 90vw;
 }
 </style>
